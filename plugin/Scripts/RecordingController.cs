@@ -12,7 +12,9 @@ namespace PupilLabs
         [SerializeField] private bool stopRecordingButton;
 
         public bool IsRecording { get; private set; }
-
+        // ***************************************************************************
+        public bool IsAwatingAnnotations { get; private set; }
+        // ---------------------------------------------------------------------------
         void Update()
         {
             if (startRecordingButton)
@@ -47,6 +49,12 @@ namespace PupilLabs
                 Debug.Log("Recording is already running.");
                 return;
             }
+
+            // ***************************************************************************
+            StartAnnotationPlugin();
+            IsAwatingAnnotations = true;
+            // ---------------------------------------------------------------------------
+
 
             var path = GetRecordingPath().Substring(2);
             Debug.Log($"Recording path: {path}");
@@ -99,6 +107,63 @@ namespace PupilLabs
                 System.IO.Directory.CreateDirectory (path);
 
             return path;
-        }    
+        }
+
+        // ***************************************************************************
+
+        public void StartAnnotationPlugin()
+        {
+            if (requestCtrl == null)
+            {
+                Debug.LogWarning("Request Controller missing");
+                return;
+            }
+
+            if (!requestCtrl.IsConnected)
+            {
+                Debug.LogWarning("Not connected");
+                return;
+            }
+
+            requestCtrl.StartPlugin("Annotation_Capture");
+            Debug.Log("Starting annotation plugin.");
+        }
+
+        public void StopAnnotationPlugin()
+        {
+            if (requestCtrl == null)
+            {
+                Debug.LogWarning("Request Controller missing");
+                return;
+            }
+
+            if (!requestCtrl.IsConnected)
+            {
+                Debug.LogWarning("Not connected");
+                return;
+            }
+
+            requestCtrl.StopPlugin("Annotation_Capture");
+            Debug.Log("Stopping annotation plugin.");
+        }
+
+
+        public void SendSimpleTrigger(string label, float duration)
+        {
+            if (!IsAwatingAnnotations)
+            {
+                StartAnnotationPlugin();
+                IsAwatingAnnotations = true;
+            }
+
+            Dictionary<string, object> data = new Dictionary<string, object>();
+            data["topic"] = "annotation";
+            data["label"] = label;
+            data["timestamp"] = Time.realtimeSinceStartup;
+            data["duration"] = duration;
+
+            requestCtrl.SendTrigger(data);
+        }
+        // ---------------------------------------------------------------------------
     }
 }

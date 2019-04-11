@@ -22,6 +22,11 @@ namespace PupilLabs
             private string subport;
 
             public RequestSocket requestSocket = null;
+            // ***************************************************************************
+            public PublisherSocket pubSocket = null;
+            private string pubport;
+            // ---------------------------------------------------------------------------
+
             private bool contextExists = false;
             private TimeSpan requestTimeout = new System.TimeSpan(0, 0, 1); //= 1sec
 
@@ -48,10 +53,32 @@ namespace PupilLabs
                 IsConnected = requestSocket.TryReceiveFrameString(requestTimeout, out subport);
             }
 
+            // ***************************************************************************
+            public void InitializePubSocket()
+            {
+                if (!IsConnected || !contextExists)
+                {
+                    Debug.Log("Cannot set up Pub Socket if Request Socket is not connected.");
+                    return;
+                }
+
+                IPHeader = ">tcp://" + IP + ":";
+                requestSocket.SendFrame("PUB_PORT");
+                requestSocket.TryReceiveFrameString(requestTimeout, out pubport);
+                pubSocket = new PublisherSocket(IPHeader + pubport);
+                Debug.Log("pub socket on port: " + pubport);
+            }
+            // ---------------------------------------------------------------------------
+
             public void CloseSockets()
             {
                 if (requestSocket != null)
                     requestSocket.Close();
+
+                // ***************************************************************************
+                if (pubSocket != null)
+                    pubSocket.Close();
+                // ---------------------------------------------------------------------------
 
                 TerminateContext();
 
@@ -78,6 +105,25 @@ namespace PupilLabs
                 requestSocket.SendMultipartMessage(m);
                 return ReceiveRequestResponse();
             }
+
+            // ***************************************************************************
+            public void SendPubMessage(Dictionary<string, object> data)
+            {
+                if (pubSocket == null || !IsConnected)
+                {
+                    Debug.Log("No valid Pub Socket found. Nothing sent.");
+                    return;
+                }
+
+                NetMQMessage m = new NetMQMessage();
+
+                m.Append(data["topic"].ToString());
+                m.Append(MessagePackSerializer.Serialize<Dictionary<string, object>>(data));
+
+                pubSocket.SendMultipartMessage(m);
+                return;
+            }
+            // ---------------------------------------------------------------------------
 
             public bool SendCommand(string cmd, out string response)
             {

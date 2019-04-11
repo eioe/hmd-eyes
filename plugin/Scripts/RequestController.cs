@@ -70,6 +70,9 @@ namespace PupilLabs
             while (!IsConnected)
             {
                 request.InitializeRequestSocket();
+                // ***************************************************************************
+                request.InitializePubSocket();
+                // ---------------------------------------------------------------------------
 
                 if (!IsConnected)
                 {
@@ -222,5 +225,23 @@ namespace PupilLabs
                 Debug.LogWarning("CheckTimeSync: not connected");
             }
         }
+
+
+        // ***************************************************************************
+
+        public void SendSimpleCom(string com)
+        {
+            string resp;
+            request.SendCommand(com, out resp);
+            Debug.Log("Response: " + resp);
+        }
+
+
+        public void SendTrigger(Dictionary<string, object> data)
+        {
+            request.SendPubMessage(data);
+        }
+
+        //----------------------------------------------------------------------------
     }
 }
